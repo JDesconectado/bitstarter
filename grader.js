@@ -24,7 +24,9 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
-var HTMLFILE_DEFAULT = 'index.html';
+var rest = require('restler');
+
+var HTMLFILE_DEFAULT = 'http://stormy-wildwood-4999.herokuapp.com';
 var CHECKFILE_DEFAULT = 'checks.json';
 
 var assertFileExists = function(infile){
@@ -35,23 +37,24 @@ var assertFileExists = function(infile){
 	}
 	return instr;
 };
-var cheerioHtmlFile = function(htmlfile){
-	return cheerio.load(fs.readFileSync(htmlfile));
-};
 
 var loadChecks = function(checksfile){
 	return JSON.parse(fs.readFileSync(checksfile));
 };
 
 var checkHtmlFile = function(htmlfile, checksfile){
-	$ = cheerioHtmlFile(htmlfile);
-	var checks = loadChecks(checksfile).sort();
-	var out = {};
-	for(var ii in checks){
-		var present = $(checks[ii]).length > 0;
-		out[checks[ii]] = present;
+	var htmlresponse = function(result, response){
+		$ = cheerio.load(result);
+		var checks = loadChecks(checksfile).sort();
+		var out = {};
+		for(var ii in checks){
+			var present = $(checks[ii]).length > 0;
+			out[checks[ii]] = present;
+		}
+		var outJson = JSON.stringify(out, null, 4);
+		console.log(outJson);
 	}
-	return out;
+	return htmlresponse;
 };
 
 
@@ -63,12 +66,10 @@ if(require.main == module) {
 	program
 	.option('-c, --checks <check_file>', 'Path to checks.json', 
 		clone(assertFileExists), CHECKFILE_DEFAULT)
-	.option('-f, --file <html file>', 'Path to index.html', 
-		clone(assertFileExists), HTMLFILE_DEFAULT)
+	.option('-u, --url <url>', 'Path to index.html',  HTMLFILE_DEFAULT)
 	.parse(process.argv);
-	var checkJson = checkHtmlFile(program.file, program.checks);
-	var outJson = JSON.stringify(checkJson, null, 4);
-	console.log(outJson);
+	var htmlresp = checkHtmlFile(program.url, program.checks);
+	rest.get(program.url).on("complete", htmlresp);
 }else {
 	exports.checkHtmlFile = checkHtmlFile;
 }
